@@ -1,0 +1,108 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_list %}
+
+{# ✅ Top filter bar above table #}
+{% block content_title %}
+  {{ block.super }}
+  {% if cl.has_filters %}
+    <div class="mml-filterbar">
+      <div class="mml-filterbar-title">FILTER</div>
+      <div class="mml-filterbar-items">
+        {% for spec in cl.filter_specs %}
+          <div class="mml-filterchip">
+            {% admin_list_filter cl spec %}
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}
+
+{# ✅ Search + buttons in ONE ROW (same line) #}
+{% block search %}
+  <div class="mml-search-row">
+    {{ block.super }}
+
+    <div class="mml-top-actions">
+      <button type="button" class="button mml-btn-export" onclick="mmlExportSelected()">
+        ⬇ Export Excel
+      </button>
+      <button type="button" class="button mml-btn-delete" onclick="mmlDeleteSelected()">
+        🗑 Delete Selected
+      </button>
+    </div>
+  </div>
+
+  <script>
+  function mmlGetSelectedIds(){
+    const boxes = document.querySelectorAll('input.action-select:checked, input[name="_selected_action"]:checked');
+    const ids = [];
+    boxes.forEach(b => { if (b.value) ids.push(b.value); });
+    return ids;
+  }
+
+  function mmlExportSelected(){
+    const ids = mmlGetSelectedIds();
+    const base = window.location.pathname.replace(/\/$/, "") + "/export-excel/";
+    const url = ids.length ? (base + "?ids=" + encodeURIComponent(ids.join(","))) : base;
+    window.location.href = url;
+  }
+
+  function mmlDeleteSelected(){
+    const ids = mmlGetSelectedIds();
+    if(!ids.length){
+      alert("Please select at least one row to delete.");
+      return;
+    }
+
+    if(!confirm("Are you sure you want to delete the selected FD entries?")){
+      return;
+    }
+
+    const form = document.getElementById("changelist-form");
+    if(!form){
+      alert("Form not found on page.");
+      return;
+    }
+
+    // ✅ If admin action dropdown exists, set it (preferred)
+    const actionSelect = form.querySelector('select[name="action"]');
+    if(actionSelect){
+      actionSelect.value = "delete_selected";
+    } else {
+      // fallback hidden action
+      let action = form.querySelector('input[name="action"]');
+      if(!action){
+        action = document.createElement("input");
+        action.type = "hidden";
+        action.name = "action";
+        form.appendChild(action);
+      }
+      action.value = "delete_selected";
+    }
+
+    // Django admin expects index for action formset
+    let index = form.querySelector('input[name="index"]');
+    if(!index){
+      index = document.createElement("input");
+      index.type = "hidden";
+      index.name = "index";
+      form.appendChild(index);
+    }
+    index.value = "0";
+
+    // ✅ Sometimes required by admin actions
+    let selectAcross = form.querySelector('input[name="select_across"]');
+    if(!selectAcross){
+      selectAcross = document.createElement("input");
+      selectAcross.type = "hidden";
+      selectAcross.name = "select_across";
+      form.appendChild(selectAcross);
+    }
+    selectAcross.value = "0";
+
+    form.submit();
+  }
+</script>
+
+{% endblock %}

@@ -1,0 +1,21 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+  <h1>Upload Bank Master CSV</h1>
+
+  <p><b>Required headers:</b> bank_name, fd_made_bank, category, sort_order</p>
+
+  {% if messages %}
+    {% for message in messages %}
+      <div class="messagelist">
+        <div class="{{ message.tags }}">{{ message }}</div>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <input type="file" name="csv_file" accept=".csv" required>
+    <br><br>
+    <button type="submit" class="default">Upload CSV</button>
+  </form>
+{% endblock %}

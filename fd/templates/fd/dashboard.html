@@ -1,0 +1,387 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+
+<style>
+  :root{
+    --left-col-width: 700px;
+    --gap: 50px;
+  }
+
+  h2{ margin-bottom: 15px; }
+
+  .dashboard-grid{
+    display: grid;
+    grid-template-columns: var(--left-col-width) 1fr;
+    gap: var(--gap);
+    align-items: start;
+  }
+
+  .left-col, .right-col{
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+
+  .dash-table{
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13px;
+    table-layout: fixed;
+  }
+
+  .dash-table th,
+  .dash-table td{
+    border: 1px solid #333;
+    padding: 4px 6px;
+    vertical-align: middle;
+  }
+
+  .dash-table th{
+    background: #f2f2f2;
+    text-align: center;
+    font-weight: 700;
+  }
+
+  .section-title{
+    font-weight: 700;
+    background: #f7f7f7;
+  }
+
+  .num{
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .left-txt{ text-align: left; }
+  .right-col .dash-table{ background: #fff; }
+</style>
+
+<h2>FD Dashboard</h2>
+<form method="get" style="margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+
+  <!-- LEFT SIDE (date + apply) -->
+  <div style="display:flex; gap:10px; align-items:center;">
+    <label style="font-weight:600;">As on date:</label>
+    <input type="date" name="as_on" value="{{ as_on|date:'Y-m-d' }}" />
+    <button type="submit" class="button">Apply</button>
+  </div>
+
+  <!-- RIGHT SIDE (downloads) -->
+  <div style="display:flex; gap:8px; align-items:center;">
+    <a href="{% url 'download_dashboard_excel' %}"
+       style="padding:6px 12px; background:#198754; color:white; text-decoration:none; border-radius:6px;">
+       Download Excel
+    </a>
+
+    <a href="{% url 'download_dashboard_pdf' %}"
+       style="padding:6px 12px; background:#0d6efd; color:white; text-decoration:none; border-radius:6px;">
+       Download PDF
+    </a>
+  </div>
+
+</form>
+
+
+<div class="dashboard-grid">
+
+  <!-- ================= LEFT COLUMN ================= -->
+  <div class="left-col">
+
+    <!-- ===== LIQUIDITY TABLE ===== -->
+    <table class="dash-table">
+      <colgroup>
+        <col style="width: 68%;">
+        <col style="width: 14%;">
+        <col style="width: 18%;">
+      </colgroup>
+
+      <tr>
+        <th colspan="3">Liquidity Table</th>
+      </tr>
+
+      <tr>
+        <th>Particulars</th>
+        <th>Details</th>
+        <th>Amount (In Cr.)</th>
+      </tr>
+
+      <tr>
+        <td>Total fund available as on {{ as_on }}</td>
+        <td></td>
+        <td class="num">{{ liquidity.total_fund_available }}</td>
+      </tr>
+
+      <tr class="section-title">
+        <td>Total funds with Mutual Funds and NCDs:</td>
+        <td></td>
+        <td class="num">{{ liquidity.funds_mf_ncd_total }}</td>
+      </tr>
+
+      <tr>
+        <td>Funds in Liquid Option</td>
+        <td class="num">{{ liquidity.liquid_option }}</td>
+        <td></td>
+      </tr>
+
+      <tr>
+        <td>Funds in Overnight Option</td>
+        <td class="num">{{ liquidity.overnight_option }}</td>
+        <td></td>
+      </tr>
+
+      <tr>
+        <td>Funds in NCDs</td>
+        <td class="num">{{ liquidity.ncds }}</td>
+        <td></td>
+      </tr>
+
+      <tr class="section-title">
+        <td>Total Funds in FDRs:</td>
+        <td></td>
+        <td class="num">{{ liquidity.total_fdrs }}</td>
+      </tr>
+
+      <tr><td>Less than 16 days</td><td class="num">{{ liquidity.buckets.lt_16 }}</td><td></td></tr>
+      <tr><td>16 days to 30/31 days</td><td class="num">{{ liquidity.buckets.d16_30 }}</td><td></td></tr>
+      <tr><td>Greater than 1 month to 3 months</td><td class="num">{{ liquidity.buckets.m1_3 }}</td><td></td></tr>
+      <tr><td>Greater than 3 months to 6 months</td><td class="num">{{ liquidity.buckets.m3_6 }}</td><td></td></tr>
+      <tr><td>Greater than 6 months to 12 months</td><td class="num">{{ liquidity.buckets.m6_12 }}</td><td></td></tr>
+      <tr><td>Greater than 12 months</td><td class="num">{{ liquidity.buckets.gt_12 }}</td><td></td></tr>
+
+      <tr class="section-title">
+        <td>Difference</td>
+        <td></td>
+        <td class="num">{{ liquidity.difference }}</td>
+      </tr>
+    </table>
+
+    <!-- ===== BANK WISE TABLE ===== -->
+    <table class="dash-table">
+      <colgroup>
+        <col style="width: 26%;">
+        <col style="width: 14%;">
+        <col style="width: 16%;">
+        <col style="width: 14%;">
+        <col style="width: 16%;">
+        <col style="width: 12%;">
+        <col style="width: 16%;">
+      </colgroup>
+
+      <tr>
+        <th colspan="7">Bank Wise FDR Details</th>
+      </tr>
+
+      <tr>
+        <th>Bank Name</th>
+        <th>FD (With Lien)<br>In Cr.</th>
+        <th>Bank<br>Contributions</th>
+        <th>FD (Without Lien)<br>In Cr.</th>
+        <th>Bank<br>Contributions</th>
+        <th>Total FDs</th>
+        <th>Total Bank<br>Contributions</th>
+      </tr>
+
+      {% for r in bank_table %}
+      <tr>
+        <td class="left-txt">{{ r.bank_name }}</td>
+        <td class="num">{{ r.with_lien }}</td>
+        <td class="num">{{ r.wl_pct }}%</td>
+        <td class="num">{{ r.without_lien }}</td>
+        <td class="num">{{ r.wol_pct }}%</td>
+        <td class="num">{{ r.total_fds }}</td>
+        <td class="num">{{ r.total_pct }}%</td>
+      </tr>
+      {% endfor %}
+
+      <tr class="section-title">
+        <td class="left-txt">Total</td>
+        <td class="num">{{ bank_totals.total_with_lien }}</td>
+        <td class="num">100.00%</td>
+        <td class="num">{{ bank_totals.total_without_lien }}</td>
+        <td class="num">100.00%</td>
+        <td class="num">{{ bank_totals.grand_total }}</td>
+        <td class="num">100.00%</td>
+      </tr>
+    </table>
+
+    <!-- ===== OD TABLE ===== -->
+    <table class="dash-table">
+      <colgroup>
+        <col style="width: 26%;">
+        <col style="width: 14%;">
+        <col style="width: 18%;">
+        <col style="width: 18%;">
+        <col style="width: 10%;">
+        <col style="width: 14%;">
+      </colgroup>
+
+      <tr>
+        <th colspan="6">Detail of Overdraft Limit</th>
+      </tr>
+
+      <tr>
+        <th>Name of Bank</th>
+        <th>OD Status</th>
+        <th>OD Amount</th>
+        <th>FD Amount</th>
+        <th>OD%</th>
+        <th>OD Rate (%)</th>
+      </tr>
+
+      {% for r in od_table %}
+      <tr>
+        <td class="left-txt">{{ r.bank_name }}</td>
+        <td>{{ r.od_status }}</td>
+        <td class="num">{{ r.od_amount }}</td>
+        <td class="num">{{ r.fd_amount }}</td>
+        <td class="num">{{ r.od_pct }}%</td>
+        <td class="num">{{ r.od_rate }}</td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="6" style="text-align:center;color:#777;">No OD records found</td>
+      </tr>
+      {% endfor %}
+
+      <tr class="section-title">
+        <td class="left-txt">Total</td>
+        <td></td>
+        <td class="num">{{ od_totals.total_od }}</td>
+        <td class="num">{{ od_totals.total_fd }}</td>
+        <td class="num">{{ od_totals.total_od_pct }}%</td>
+        <td></td>
+      </tr>
+    </table>
+
+  </div>
+
+  <!-- ================= RIGHT COLUMN ================= -->
+  <div class="right-col">
+
+    <!-- ===== CATEGORY TABLE ===== -->
+    <table class="dash-table">
+      <colgroup>
+        <col style="width: 40%;">
+        <col style="width: 30%;">
+        <col style="width: 30%;">
+      </colgroup>
+
+      <tr>
+        <th colspan="3">FDR Details- Category of Banks</th>
+      </tr>
+
+      <tr>
+        <th class="left-txt">Categorisation of Banks</th>
+        <th>Amount (With Lien)</th>
+        <th>Amount (Without Lien)</th>
+      </tr>
+
+      {% for r in category_table %}
+      <tr>
+        <td class="left-txt">{{ r.category }}</td>
+        <td class="num">{{ r.with_lien }}</td>
+        <td class="num">{{ r.without_lien }}</td>
+      </tr>
+      {% endfor %}
+
+      <tr class="section-title">
+        <td style="text-align:center;">Total</td>
+        <td class="num">{{ category_totals.total_with_lien }}</td>
+        <td class="num">{{ category_totals.total_without_lien }}</td>
+      </tr>
+    </table>
+
+    <!-- ===== ROI / INTEREST RATE TABLE (NEW) ===== -->
+    <table class="dash-table">
+      <colgroup>
+        <col style="width: 40%;">
+        <col style="width: 30%;">
+        <col style="width: 30%;">
+      </colgroup>
+
+      <tr>
+        <th colspan="3">FDR Details- Interest Rate</th>
+      </tr>
+
+      <tr>
+        <th class="left-txt">Percentage Bucket</th>
+        <th>Amount (With Lien)</th>
+        <th>Amount (Without Lien)</th>
+      </tr>
+
+      {% for r in roi_table %}
+      <tr>
+        <td class="left-txt">{{ r.bucket }}</td>
+        <td class="num">{{ r.with_lien }}</td>
+        <td class="num">{{ r.without_lien }}</td>
+      </tr>
+      {% endfor %}
+
+      <tr class="section-title">
+        <td style="text-align:center;">Total</td>
+        <td class="num">{{ roi_totals.total_with_lien }}</td>
+        <td class="num">{{ roi_totals.total_without_lien }}</td>
+      </tr>
+    </table>
+<!-- ===== FD NATURE TABLE ===== -->
+<table class="dash-table">
+  <colgroup>
+    <col style="width: 40%;">
+    <col style="width: 30%;">
+    <col style="width: 30%;">
+  </colgroup>
+
+  <tr>
+    <th colspan="3">FDR Details - FD Nature</th>
+  </tr>
+
+  <tr>
+    <th class="left-txt">Particulars</th>
+    <th>Amount (Without Lien)</th>
+    <th>Amount (With Lien)</th>
+  </tr>
+
+  {% for r in nature_table %}
+  <tr>
+    <td class="left-txt">{{ r.nature }}</td>
+    <td class="num">{{ r.without_lien }}</td>
+    <td class="num">{{ r.with_lien }}</td>
+  </tr>
+  {% endfor %}
+
+  <tr class="section-title">
+    <td style="text-align:center;">Total</td>
+    <td class="num">{{ nature_totals.total_without_lien }}</td>
+    <td class="num">{{ nature_totals.total_with_lien }}</td>
+  </tr>
+</table>
+<table class="dash-table">
+  <tr>
+    <th colspan="2">FDR Details - Yield Data</th>
+  </tr>
+  <tr>
+    <th class="left-txt">Particulars</th>
+    <th>Percentage</th>
+  </tr>
+
+  <tr>
+    <td class="left-txt">Yield of FDRs (Without Lien)</td>
+    <td class="num">{{ yield_data.yield_without_lien }}</td>
+  </tr>
+
+  <tr>
+    <td class="left-txt">Yield of FDRs (With Lien)</td>
+    <td class="num">{{ yield_data.yield_with_lien }}</td>
+  </tr>
+
+  <tr class="section-title">
+    <td class="left-txt">Total Yield of FDRs</td>
+    <td class="num">{{ yield_data.yield_total }}</td>
+  </tr>
+</table>
+
+  </div>
+
+</div>
+
+{% endblock %}

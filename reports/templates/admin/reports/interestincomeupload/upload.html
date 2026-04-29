@@ -1,0 +1,23 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <h1>{{ title }}</h1>
+
+  <div style="max-width:760px; background:#fff; padding:18px; border:1px solid #e5e7eb; border-radius:12px;">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <table>
+        {{ form.as_table }}
+      </table>
+
+      <div style="margin-top:14px;">
+        <button type="submit" class="default">Upload</button>
+        <a href="../" class="button">Back</a>
+      </div>
+    </form>
+
+    <p style="margin-top:12px; color:#6b7280;">
+      File must contain column <b>FD Number (Receipt)</b> and the standard Interest Income columns in the same order.
+    </p>
+  </div>
+{% endblock %}

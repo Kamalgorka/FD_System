@@ -1,0 +1,273 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <style>
+    /* Hide admin sidebar ONLY on this Reports page */
+    #nav-sidebar { display: none !important; }
+    .main.shifted, .main { margin-left: 0 !important; }
+
+    /* Full width content */
+    #content { padding-left: 18px; padding-right: 18px; }
+    #content-main { width: 100% !important; max-width: 100% !important; }
+    .module { width: 100% !important; max-width: 100% !important; }
+
+    /* Same height for all controls */
+    .ctrl-h{
+      height: 40px !important;
+      line-height: 40px !important;
+      box-sizing: border-box !important;
+      border-radius: 12px !important;
+      font-size: 13px !important;
+    }
+    select.ctrl-h, input.ctrl-h{
+      padding: 0 10px !important;
+      border: 1px solid #cbd5e1 !important;
+      background: #fff !important;
+    }
+    .button.ctrl-h, a.button.ctrl-h{
+      display:inline-flex !important;
+      align-items:center !important;
+      justify-content:center !important;
+      padding: 0 12px !important;
+      white-space: nowrap !important;
+      line-height: normal !important;
+      border-radius: 12px !important;
+      font-size: 13px !important;
+    }
+
+    /* Toolbar single-line fit */
+    .report-toolbar{
+      display:flex !important;
+      align-items:center !important;
+      width:100% !important;
+      margin-bottom:14px !important;
+      overflow: hidden !important; /* prevent pushing buttons out */
+    }
+    .report-form{
+      display:flex !important;
+      align-items:center !important;
+      gap:8px !important;
+      flex-wrap:nowrap !important;   /* keep one line */
+      width:100% !important;
+      margin:0 !important;
+      min-width: 0 !important;       /* allow shrink */
+    }
+
+    /* ✅ Allow ALL items to shrink (critical for keeping Export visible) */
+    .report-form > *{ min-width: 0 !important; }
+
+    /* ✅ Make spacer shrink (so buttons always stay visible) */
+    .report-spacer{ flex: 1 1 auto !important; min-width: 0 !important; }
+
+    /* Compact widths so everything fits on 1 screen */
+    .w-report { width: 210px !important; min-width: 180px !important; }
+    .w-date   { width: 145px !important; min-width: 135px !important; }
+    .w-qtr    { width: 150px !important; min-width: 135px !important; }
+    .w-type   { width: 150px !important; min-width: 135px !important; }
+    .w-stat   { width: 120px !important; min-width: 110px !important; }
+
+    .lbl{
+      font-weight: 700;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    /* ✅ Buttons stay visible + compact */
+    .btn-wrap{ display:flex !important; gap:8px !important; flex:0 0 auto !important; }
+    .button.ctrl-h, a.button.ctrl-h{ padding: 0 10px !important; }
+
+    /* Main table full width */
+    .table-wrap{ width:100% !important; overflow:auto !important; }
+    #result_list{
+      width:100% !important;
+      min-width: 1400px;
+      border-collapse: collapse !important;
+      table-layout: auto !important;
+    }
+    #result_list th, #result_list td{ white-space: nowrap; }
+
+    /* ✅ Quarter hidden initially */
+    .qtr-wrap { display: none; }
+    .qtr-wrap.show { display: inline-flex; align-items:center; gap:8px; }
+  </style>
+{% endblock %}
+
+{% block content %}
+<div id="content-main">
+
+  <h1 style="margin:0 0 12px 0; font-weight:700;">Reports</h1>
+
+  <div class="report-toolbar">
+    <form method="get" action="" class="report-form">
+      <input type="hidden" name="report" value="fd_register">
+
+      <select disabled class="ctrl-h w-report">
+        <option selected>FD Register</option>
+      </select>
+
+      <span class="lbl">As on Date:</span>
+      <input type="date" id="as_of" name="as_of" value="{{ as_of|date:'Y-m-d' }}" class="ctrl-h w-date">
+
+      <!-- ✅ Quarter block wrapped so we can hide/show -->
+      <span class="qtr-wrap" id="qtr_wrap">
+        <span class="lbl">Quarter:</span>
+        <select name="quarter" id="quarter" class="ctrl-h w-qtr">
+          {% for qval, qlabel in quarter_choices %}
+            <option value="{{ qval }}" {% if selected_quarter == qval %}selected{% endif %}>
+              {{ qlabel }}
+            </option>
+          {% endfor %}
+        </select>
+      </span>
+
+      <span class="lbl">FD Type:</span>
+      <select name="fd_type" id="fd_type" class="ctrl-h w-type">
+        <option value="" {% if not fd_type %}selected{% endif %}>All</option>
+        <option value="Without lien" {% if fd_type == "Without lien" %}selected{% endif %}>Without lien</option>
+        <option value="With lien" {% if fd_type == "With lien" %}selected{% endif %}>With lien</option>
+      </select>
+
+      <span class="lbl">Status:</span>
+      <select name="fd_status" id="fd_status" class="ctrl-h w-stat">
+        <option value="" {% if not fd_status %}selected{% endif %}>All</option>
+        <option value="Existing" {% if fd_status == "Existing" %}selected{% endif %}>Existing</option>
+        <option value="Matured" {% if fd_status == "Matured" %}selected{% endif %}>Matured</option>
+      </select>
+
+      <div class="report-spacer"></div>
+
+      <div class="btn-wrap">
+        <button type="submit" name="run" value="1" class="button ctrl-h">Search/Load</button>
+        {% if show_table %}
+          <a href="{{ export_url }}" class="button ctrl-h">Export Excel</a>
+        {% endif %}
+      </div>
+    </form>
+  </div>
+
+  {% if show_table %}
+
+    <div class="module" style="padding:0; border-radius:12px;">
+      <div class="table-wrap">
+        <table id="result_list">
+          <thead>
+            <tr>
+              <th>System FD No</th>
+              <th>FD Number Receipt</th>
+              <th>Bank Name</th>
+              <th>Trustee Name</th>
+              <th>Category</th>
+              <th>FD Amount</th>
+              <th>ROI</th>
+              <th>Start Date</th>
+              <th>Maturity Date</th>
+              <th>Created At</th>
+              <th>Opening Date</th>
+              <th>Close Date</th>
+              <th>Days Under Study</th>
+              <th>Status Ind AS</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in rows %}
+              <tr>
+                <td>{{ r.system_fd_no }}</td>
+                <td>{{ r.fd_number_receipt }}</td>
+                <td>{{ r.bank_name }}</td>
+                <td>{{ r.trustee_name }}</td>
+                <td>{{ r.category }}</td>
+                <td>{{ r.fd_amount }}</td>
+                <td>{{ r.roi }}</td>
+
+                <td>{{ r.start_date|date:"m-d-Y" }}</td>
+                <td>{{ r.maturity_date|date:"m-d-Y" }}</td>
+                <td>{{ r.created_at|date:"m-d-Y H:i" }}</td>
+                <td>{% if r.opening_date %}{{ r.opening_date|date:"m-d-Y" }}{% endif %}</td>
+                <td>{% if r.close_date %}{{ r.close_date|date:"m-d-Y" }}{% endif %}</td>
+
+                <td>{{ r.days_under_study }}</td>
+                <td>{{ r.status_ind_as }}</td>
+                <td>{{ r.status }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="15" style="padding:12px;">No records found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  {% endif %}
+
+</div>
+
+<script>
+(function () {
+  const asOfEl = document.getElementById("as_of");
+  const quarterEl = document.getElementById("quarter");
+  const qtrWrap = document.getElementById("qtr_wrap");
+  if (!asOfEl || !quarterEl || !qtrWrap) return;
+
+  // FY Quarter mapping: Q1 Apr-Jun, Q2 Jul-Sep, Q3 Oct-Dec, Q4 Jan-Mar
+  function getFYQuarterFromMonth(month) {
+    if ([4, 5, 6].includes(month)) return "Q1";
+    if ([7, 8, 9].includes(month)) return "Q2";
+    if ([10, 11, 12].includes(month)) return "Q3";
+    if ([1, 2, 3].includes(month)) return "Q4";
+    return null;
+  }
+
+  function setQuarter(qCode) {
+    if (!qCode) return;
+
+    // match option value like "Q3"
+    for (const opt of quarterEl.options) {
+      if ((opt.value || "").trim() === qCode) {
+        quarterEl.value = opt.value;
+        return;
+      }
+    }
+    // fallback: match visible text like "Q3 (Oct–Dec)"
+    for (const opt of quarterEl.options) {
+      if ((opt.text || "").trim().startsWith(qCode)) {
+        quarterEl.value = opt.value;
+        return;
+      }
+    }
+  }
+
+  let userChangedQuarter = false;
+  quarterEl.addEventListener("change", () => { userChangedQuarter = true; });
+
+  function autoPickQuarter(force) {
+    // If date empty -> keep quarter hidden
+    if (!asOfEl.value) {
+      qtrWrap.classList.remove("show");
+      return;
+    }
+
+    // Date selected -> show quarter
+    qtrWrap.classList.add("show");
+
+    const d = asOfEl.valueAsDate instanceof Date ? asOfEl.valueAsDate : new Date(asOfEl.value + "T00:00:00");
+    if (isNaN(d.getTime())) return;
+
+    const month = d.getMonth() + 1;
+    const q = getFYQuarterFromMonth(month);
+
+    if (!force && userChangedQuarter) return;
+    setQuarter(q);
+  }
+
+  // ✅ On page load: if date is empty => quarter hidden, else show + auto-set
+  autoPickQuarter(true);
+
+  // ✅ When date changes: show + auto-set quarter
+  asOfEl.addEventListener("input", () => autoPickQuarter(false));
+  asOfEl.addEventListener("change", () => autoPickQuarter(false));
+})();
+</script>
+
+{% endblock %}

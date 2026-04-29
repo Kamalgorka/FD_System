@@ -1,0 +1,858 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create FD</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { background:#f5f6fa; font-size:14px; }
+
+    .sidebar{
+      min-height:100vh; background:#111827; color:white; padding:16px;
+    }
+    .sidebar a{
+      color:#cbd5e1; text-decoration:none; display:block; padding:8px 10px;
+      border-radius:8px; font-size:14px; margin-top:4px;
+    }
+    .sidebar a:hover{ background:#374151; color:white; }
+
+    h3{ font-size:24px; margin-bottom:14px; font-weight:700; }
+
+    /* Card */
+    .card{
+      border-radius:14px;
+      border:1px solid #e6e8ef;
+      box-shadow:0 2px 10px rgba(0,0,0,.03);
+      padding:18px !important;
+    }
+
+    /* Section header bar (like reference) */
+    .section-bar{
+      background:#4a86d6;
+      color:#fff;
+      padding:6px 12px;
+      border-radius:8px;
+      font-weight:700;
+      margin-bottom:10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .section-bar small{
+      font-size:12px;
+    }
+    .section-bar small{ font-weight:500; opacity:.9; }
+
+    /* Required star */
+    .req{
+      color:#d93025;
+      font-weight:800;
+      margin-left:4px;
+    }
+
+    /* Grid layout for perfect alignment */
+    .form-grid{
+      display:grid;
+      grid-template-columns: repeat(4, minmax(220px, 1fr));
+      gap: 10px 12px;
+      align-items:start;
+    }
+
+    .field label{
+      display:block;
+      font-weight:700;
+      font-size:13px;
+      margin-bottom:6px;
+      color:#111827;
+    }
+
+    .field input,
+    .field select,
+    .field textarea{
+      width:100%;
+      border:1px solid #dcdfe3;
+      border-radius:10px;
+      padding:6px 8px;
+      font-size:12px;
+      background:#fff;
+      height:32px;
+      box-sizing:border-box;
+    }
+
+    .field textarea{
+      height:auto;
+      min-height:96px;
+      resize:vertical;
+    }
+
+    .field.readonly input{
+      background:#f3f4f6;
+      font-weight:700;
+      letter-spacing:.3px;
+    }
+
+    .field.disabled{
+      opacity:.55;
+      pointer-events:none;
+    }
+
+    /* Make items that should span full row */
+    .span-2{ grid-column: span 2; }
+    .span-3{ grid-column: span 3; }
+    .span-4{ grid-column: span 4; }
+
+    /* Buttons */
+    .btn-primary{
+      background:#2563eb;
+      border:none;
+      border-radius:10px;
+      padding:10px 18px;
+      font-weight:700;
+    }
+    .btn-primary:hover{ background:#1d4ed8; }
+
+    /* ✅ Top admin nav (only when coming from admin) */
+    .admin-topbar{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      margin: 0 0 12px 0;
+      flex-wrap: wrap;
+    }
+    .admin-topbar a{
+      text-decoration:none;
+      border-radius:10px;
+      padding:8px 12px;
+      font-weight:700;
+      font-size:13px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+    }
+
+    /* Responsive */
+    @media (max-width: 1200px){
+      .form-grid{ grid-template-columns: repeat(2, minmax(220px, 1fr)); }
+      .span-3,.span-4{ grid-column: span 2; }
+    }
+    @media (max-width: 640px){
+      .form-grid{ grid-template-columns: 1fr; }
+      .span-2,.span-3,.span-4{ grid-column: span 1; }
+    }
+  </style>
+</head>
+
+<body>
+<div class="container-fluid">
+  <div class="row">
+
+    <div class="col-2 sidebar">
+      <h5 class="fw-bold">FD System</h5>
+
+      <!-- ✅ If opened from Admin, Dashboard should take you back to Admin -->
+      {% if request.GET.from_admin == "1" %}
+        <a href="/admin/">Admin Home</a>
+        <a href="/admin/fd/fdentry/">FD Entries (Admin)</a>
+      {% else %}
+        <a href="/fd/dashboard/">Dashboard</a>
+      {% endif %}
+
+      <a href="/fd/create/">Create FD</a>
+    </div>
+
+    <div class="col-10 page-wrap">
+      <h3>Create FD</h3>
+
+      <!-- ✅ Extra Back buttons (only for admin-open) -->
+      {% if request.GET.from_admin == "1" %}
+        <div class="admin-topbar">
+          <a class="btn btn-outline-secondary btn-sm" href="/admin/fd/fdentry/">
+            ← Back to FD Entries (Admin)
+          </a>
+          <a class="btn btn-outline-primary btn-sm" href="/admin/">
+            Admin Home
+          </a>
+        </div>
+      {% endif %}
+
+      {% if msg %}
+        <div id="successAlert" class="alert alert-success">{{ msg }}</div>
+      {% endif %}
+      {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+      {% endif %}
+
+      <div class="card">
+        <div class="section-bar">
+          <div>Create FD Entry</div>
+          <small>All fields are mandatory <span class="req">*</span></small>
+        </div>
+
+        <form method="post" action="/fd/create/" enctype="multipart/form-data" id="fdForm">
+          {% csrf_token %}
+
+          <!-- Hidden bank master id -->
+          <input type="hidden" name="bank_master" id="bank_master">
+
+          <div class="form-grid">
+
+            <!-- ✅ FD Number Auto (FIRST FIELD) -->
+            <div class="field readonly">
+              <label>FD Number (Auto) <span class="req">*</span></label>
+              <input type="text" id="fd_auto_code" value="{{ next_fd_code }}" readonly>
+            </div>
+
+            <!-- FD Type -->
+            <div class="field">
+              <label>FD Type <span class="req">*</span></label>
+              <select id="fd_type" name="fd_type" class="form-select" required>
+                <option value="">-- Select --</option>
+                <option value="With lien">With lien</option>
+                <option value="Without lien">Without lien</option>
+              </select>
+            </div>
+
+            <!-- Term Loan Number -->
+            <div class="field term-loan-fields d-none">
+              <label for="term_loan_number" class="form-label">
+                Term Loan Number <span class="text-danger termloan-star">*</span>
+              </label>
+              <input type="text" id="term_loan_number" name="term_loan_number" class="form-control">
+            </div>
+
+            <!-- Term Loan with -->
+            <div class="field term-loan-fields d-none">
+              <label for="term_loan_with" class="form-label">
+                Term Loan With <span class="text-danger termloan-star">*</span>
+              </label>
+              <input type="text" id="term_loan_with" name="term_loan_with" class="form-control">
+            </div>
+
+            <!-- OD Status -->
+            <div class="field">
+              <label>OD status <span class="req">*</span></label>
+              <select id="od_status" name="od_status" class="form-select" required>
+                <option value="">-- Select --</option>
+                <option value="Yes">Yes</option>
+                <option value="No">No</option>
+              </select>
+            </div>
+
+            <!-- OD dependent fields -->
+            <div class="field od-fields d-none">
+              <label>Margin of OD <span class="req od-star d-none">*</span></label>
+              <input name="margin_of_od" type="number" step="0.01" class="form-control" data-od="1">
+            </div>
+
+            <div class="field od-fields d-none">
+              <label>Rate of OD <span class="req od-star d-none">*</span></label>
+              <input name="rate_of_od" type="number" step="0.01" class="form-control" data-od="1">
+            </div>
+
+            <div class="field od-fields d-none">
+              <label>Amount OD <span class="req od-star d-none">*</span></label>
+              <input name="amount_od" type="number" step="0.01" class="form-control" data-od="1">
+            </div>
+
+            <!-- FD Nature -->
+            <div class="field">
+              <label>FD Nature <span class="req">*</span></label>
+              <select name="fd_nature" class="form-control" required>
+                <option value="">-- Select --</option>
+                <option>Callable</option>
+                <option>Non Callable</option>
+              </select>
+            </div>
+
+            <!-- Bank Name -->
+            <div class="field">
+              <label>Bank Name <span class="req">*</span></label>
+              <select name="bank_name" id="bank_name" class="form-control" required>
+                <option value="">-- Select --</option>
+                {% for name in bank_names %}
+                  <option value="{{ name|escape }}">{{ name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <!-- Category -->
+            <div class="field">
+              <label>Categorisation of Banks <span class="req">*</span></label>
+              <select name="category" id="category" class="form-control" required>
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+
+            <!-- ✅ Trustee Name (GLOBAL MASTER) -->
+            <div class="field" id="trustee_wrap">
+              <label>Trustee Name</label>
+              <select name="trustee_id" id="trustee_id" class="form-control">
+                <option value="">-- Select --</option>
+              </select>
+            </div>
+
+            <!-- FD Number receipt -->
+            <div class="field">
+              <label>FD Number (As per FD receipt) <span class="req">*</span></label>
+              <input name="fd_number_receipt" class="form-control" required>
+            </div>
+
+            <!-- Start Date -->
+            <div class="field">
+              <label>Start Date <span class="req">*</span></label>
+              <input name="start_date" id="start_date" type="date" class="form-control" required>
+            </div>
+
+            <!-- Maturity Date -->
+            <div class="field">
+              <label>Maturity Date <span class="req">*</span></label>
+              <input name="maturity_date" id="maturity_date" type="date" class="form-control" required>
+            </div>
+
+            <!-- Days auto -->
+            <div class="field readonly">
+              <label>Days (Auto Calculate) <span class="req">*</span></label>
+              <input name="days_display" id="days_display" class="form-control" readonly>
+            </div>
+
+            <!-- Days Bucket -->
+            <div class="field readonly">
+              <label>Days Bucket (Based on FD Days) <span class="req">*</span></label>
+              <input name="days_bucket_display" id="days_bucket_display" class="form-control" readonly>
+            </div>
+
+            <!-- ROI -->
+            <div class="field">
+              <label>ROI <span class="req">*</span></label>
+              <input name="roi" id="roi" type="number" step="0.01" class="form-control" required>
+            </div>
+
+            <!-- Percentage bucket -->
+            <div class="field readonly">
+              <label>Percentage Bucket (Based on ROI) <span class="req">*</span></label>
+              <input name="percentage_bucket_display" id="percentage_bucket_display" class="form-control" readonly>
+            </div>
+
+            <!-- TDS% -->
+            <div class="field">
+              <label>TDS% <span class="req">*</span></label>
+              <input name="tds_percent" id="tds_percent" type="number" step="0.01" class="form-control" required>
+            </div>
+
+            <!-- FD Amount -->
+            <div class="field">
+              <label>FD Amount <span class="req">*</span></label>
+              <input name="fd_amount" id="fd_amount" type="text" class="form-control" required>
+            </div>
+
+            <!-- Maturity Amount -->
+            <div class="field">
+              <label>Maturity Amount <span class="req">*</span></label>
+              <input name="maturity_amount" id="maturity_amount" type="text" class="form-control" required>
+            </div>
+
+            <!-- Interest Actually Due -->
+            <div class="field">
+              <label>Interest Actually Due <span class="req">*</span></label>
+              <input name="interest_actually_due" id="interest_actually_due" type="text" class="form-control" readonly>
+            </div>
+
+            <!-- TDS amount -->
+            <div class="field readonly">
+              <label>TDS (From Calculation) <span class="req">*</span></label>
+              <input name="tds_amount_display" id="tds_amount_display" class="form-control" readonly>
+            </div>
+
+            <!-- Expected -->
+            <div class="field readonly">
+              <label>Amt. Expected to be received (From Calculation) <span class="req">*</span></label>
+              <input name="amt_expected_display" id="amt_expected_display" class="form-control" readonly>
+            </div>
+
+            <!-- Remarks (NOT required) -->
+            <div class="field span-4">
+              <label>Remarks</label>
+              <textarea name="remarks" class="form-control" rows="3"></textarea>
+            </div>
+
+            <!-- Attachment -->
+            <div class="field span-4">
+              <label>Attachment (FD Receipt / PDF) <span class="req">*</span></label>
+              <input name="attachment" type="file" class="form-control" required>
+            </div>
+
+          </div>
+
+          <div class="mt-4">
+            <button class="btn btn-primary">Submit</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // ---------------- BankMaster dropdown logic (AJAX) ----------------
+  const bankSelect = document.getElementById("bank_name");
+  const categorySelect = document.getElementById("category");
+  const trusteeSelect = document.getElementById("trustee_id");
+  const bankMasterHidden = document.getElementById("bank_master");
+  const fdForm = document.getElementById("fdForm");
+
+  // ✅ Trustee wrapper
+  const trusteeWrap = document.getElementById("trustee_wrap");
+  const trusteeStar = document.getElementById("trustee_star");
+
+  let currentRows = [];
+  let trusteesLoadedOnce = false;
+
+  // ✅ SAFE setOptions: supports strings OR objects
+  function setOptions(selectEl, items) {
+    const currentVal = selectEl.value;
+    selectEl.innerHTML = '<option value="">-- Select --</option>';
+
+    (items || []).forEach(it => {
+      if(it === null || it === undefined) return;
+
+      // string case
+      if(typeof it === "string"){
+        const s = it.trim();
+        if(!s) return;
+        const opt = document.createElement("option");
+        opt.value = s;
+        opt.textContent = s;
+        selectEl.appendChild(opt);
+        return;
+      }
+
+      // object case
+      if(typeof it === "object"){
+        const value = (it.value ?? it.id ?? it.pk ?? it.name ?? it.trustee_name ?? "").toString().trim();
+        const label = (it.label ?? it.name ?? it.trustee_name ?? it.text ?? value).toString().trim();
+        if(!value || !label) return;
+
+        const opt = document.createElement("option");
+        opt.value = value;
+        opt.textContent = label;
+        selectEl.appendChild(opt);
+        return;
+      }
+
+      // fallback
+      const s = String(it).trim();
+      if(!s) return;
+      const opt = document.createElement("option");
+      opt.value = s;
+      opt.textContent = s;
+      selectEl.appendChild(opt);
+    });
+
+    const has = Array.from(selectEl.options).some(o => o.value === currentVal);
+    if (has) selectEl.value = currentVal;
+  }
+
+  function parseMoney(val){
+    if(val === null || val === undefined) return 0;
+    const s = String(val).replace(/,/g, "").trim();
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+
+  function formatINR(num){
+    try{
+      return new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+    }catch(e){
+      return (num || 0).toFixed(2);
+    }
+  }
+
+  function unique(arr){
+    return [...new Set(arr.filter(x => x !== null && x !== undefined && String(x).trim() !== ""))];
+  }
+
+  function normalizeText(s){
+    return (s || "").toString().trim().replace(/\s+/g, " ").toLowerCase();
+  }
+
+  function resetBankMasterUI(){
+    currentRows = [];
+    bankMasterHidden.value = "";
+    setOptions(categorySelect, []);
+  }
+
+  // ✅ Load ALL trustees (global master)
+  async function loadAllTrustees(force=false){
+    if(trusteesLoadedOnce && !force) return;
+
+    try{
+      const url = `/fd/trustee-options/?_=${Date.now()}`;
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if(!res.ok) throw new Error("Trustee API failed: " + res.status);
+
+      const data = await res.json();
+      const raw = data.trustees || data.rows || data.results || [];
+
+      setOptions(trusteeSelect, raw);
+      trusteeSelect.value = "";
+      trusteesLoadedOnce = true;
+
+    }catch(err){
+      console.error("Trustee load error:", err);
+      setOptions(trusteeSelect, []);
+      trusteeSelect.value = "";
+      trusteesLoadedOnce = false;
+    }
+  }
+
+  async function loadMappingsForBank(bankName) {
+    resetBankMasterUI();
+    if (!bankName) return;
+
+    try {
+      const url = `/fd/bankmaster-options/?bank_name=${encodeURIComponent(bankName)}&_=${Date.now()}`;
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error("Bankmaster API failed: " + res.status);
+
+      const data = await res.json();
+
+      // ✅ rows = [{id, category}]
+      currentRows = (data.rows || []).map(r => ({
+        ...r,
+        _catN: normalizeText(r.category),
+      }));
+
+      const categories = unique(currentRows.map(r => r.category));
+      setOptions(categorySelect, categories);
+
+      if (categories.length === 1) categorySelect.value = categories[0];
+
+      resolveBankMasterId();
+
+    } catch (err) {
+      console.error(err);
+      resetBankMasterUI();
+      alert("Bank Master options could not be loaded. Please refresh once.");
+    }
+  }
+
+  // ✅ bank_master resolved ONLY by category (trustee is NOT bank-specific)
+  function resolveBankMasterId() {
+    bankMasterHidden.value = "";
+
+    const category = categorySelect.value;
+    if (!category) return;
+
+    const cN = normalizeText(category);
+    const matchAny = currentRows.find(r => r._catN === cN);
+    if (matchAny) bankMasterHidden.value = matchAny.id;
+  }
+
+  bankSelect.addEventListener("change", e => loadMappingsForBank(e.target.value));
+  categorySelect.addEventListener("change", () => resolveBankMasterId());
+
+  // ---------------- OD show/hide + required toggle ----------------
+  const odStatus = document.getElementById("od_status");
+  const odFields = document.querySelectorAll(".od-fields");
+  const odStars = document.querySelectorAll(".od-star");
+
+  const fdTypeEl = document.getElementById("fd_type");
+  const fdAutoEl = document.getElementById("fd_auto_code");
+
+  const termLoanNoEl = document.getElementById("term_loan_number");
+  const termLoanWithEl = document.getElementById("term_loan_with");
+  const termLoanBlocks = document.querySelectorAll(".term-loan-fields");
+
+  function isWithLienSelected(){
+    const v = normalizeText(fdTypeEl ? fdTypeEl.value : "");
+    return v === "with lien" || v === "with-lien" || v === "withlien";
+  }
+
+  function isWithoutLienSelected(){
+    const v = normalizeText(fdTypeEl ? fdTypeEl.value : "");
+    return v === "without lien" || v === "without-lien" || v === "withoutlien";
+  }
+
+  function handleOD(){
+    if(isWithLienSelected()){
+      odStatus.value = "No";
+      odStatus.disabled = true;
+      odFields.forEach(el => el.classList.add("d-none"));
+      odStars.forEach(s => s.classList.add("d-none"));
+      odFields.forEach(el => {
+        const inp = el.querySelector("input");
+        if(inp){
+          inp.required = false;
+          inp.value = "";
+        }
+      });
+      return;
+    }
+
+    odStatus.disabled = false;
+    const yes = odStatus.value === "Yes";
+
+    odFields.forEach(el => el.classList.toggle("d-none", !yes));
+    odStars.forEach(s => s.classList.toggle("d-none", !yes));
+
+    odFields.forEach(el => {
+      const inp = el.querySelector("input");
+      if(inp){
+        inp.required = yes;
+        if(!yes) inp.value = "";
+      }
+    });
+  }
+  odStatus.addEventListener("change", handleOD);
+
+  // ---------------- FD AUTO NUMBER LIVE PREVIEW ----------------
+  const sdEl = document.getElementById("start_date");
+
+  async function refreshFdAutoCode(){
+    if(!fdAutoEl) return;
+
+    const fdType = (fdTypeEl?.value || "").trim();
+    const startDate = (sdEl?.value || "").trim();
+
+    if(!fdType) return;
+
+    try{
+      const url = `/fd/fd-auto-preview/?fd_type=${encodeURIComponent(fdType)}&start_date=${encodeURIComponent(startDate)}&_=${Date.now()}`;
+      const res = await fetch(url, { headers: { "Accept": "application/json" } });
+      if(!res.ok) throw new Error("Preview API failed: " + res.status);
+
+      const data = await res.json();
+      if(data && data.code){
+        fdAutoEl.value = data.code;
+      }
+    }catch(err){
+      console.error("FD auto preview error:", err);
+    }
+  }
+
+  function handleFdType(){
+    const withLien = isWithLienSelected();
+    const withoutLien = isWithoutLienSelected();
+
+    // With lien → show term loan + required
+    termLoanBlocks.forEach(b => b.classList.toggle("d-none", !withLien));
+
+    if(termLoanNoEl){
+      termLoanNoEl.required = withLien;
+      if(!withLien) termLoanNoEl.value = "";
+    }
+    if(termLoanWithEl){
+      termLoanWithEl.required = withLien;
+      if(!withLien) termLoanWithEl.value = "";
+    }
+
+    // Trustee rules (global master)
+    if(withLien){
+  trusteeWrap.classList.remove("d-none");
+  trusteeSelect.required = false;     // ✅ NOT mandatory now
+  if(trusteeStar) trusteeStar.classList.add("d-none"); // hide star if still exists
+  loadAllTrustees();
+  // keep existing selection; DO NOT force blank
+} else {
+  trusteeWrap.classList.add("d-none");
+  trusteeSelect.value = "";
+  trusteeSelect.required = false;
+  if(trusteeStar) trusteeStar.classList.add("d-none");
+}
+
+    handleOD();
+  }
+
+  if(fdTypeEl){
+    fdTypeEl.addEventListener("change", () => {
+      handleFdType();
+      refreshFdAutoCode();
+      resolveBankMasterId();
+    });
+  }
+
+  // ---------------- Submit Validation ----------------
+  fdForm.addEventListener("submit", function(e){
+    resolveBankMasterId();
+
+    const withLien = isWithLienSelected();
+
+
+
+    if(!bankMasterHidden.value){
+      e.preventDefault();
+      alert("Please select Bank Name and Category properly.");
+      return;
+    }
+
+    if(withLien){
+      odStatus.value = "No";
+    }
+  });
+
+  // ---------------- Auto calculations ----------------
+  const mdEl = document.getElementById("maturity_date");
+  const daysEl = document.getElementById("days_display");
+  const daysBucketEl = document.getElementById("days_bucket_display");
+
+  const roiEl = document.getElementById("roi");
+  const roiBucketEl = document.getElementById("percentage_bucket_display");
+
+  const tdsPercentEl = document.getElementById("tds_percent");
+  const maturityAmtEl = document.getElementById("maturity_amount");
+  const tdsAmtEl = document.getElementById("tds_amount_display");
+  const expectedEl = document.getElementById("amt_expected_display");
+
+  const fdAmtEl = document.getElementById("fd_amount");
+  const interestDueEl = document.getElementById("interest_actually_due");
+
+  function parseDateSmart(val){
+    if(!val) return null;
+    const v = val.trim();
+
+    if(/^\d{4}-\d{2}-\d{2}$/.test(v)){
+      const [y,m,d] = v.split("-").map(Number);
+      return new Date(y, m-1, d);
+    }
+    if(/^\d{2}-\d{2}-\d{4}$/.test(v)){
+      const [d,m,y] = v.split("-").map(Number);
+      return new Date(y, m-1, d);
+    }
+    const dt = new Date(v);
+    return isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function calcDaysBucket(days){
+    if(days < 16) return "Less than 16 days";
+    if(days <= 31) return "16 days to 30/31 days";
+    if(days <= 92) return "Greater than 1 month to 3 months";
+    if(days <= 183) return "Greater than 3 months to 6 months";
+    if(days <= 365) return "Greater than 6 months to 12 months";
+    return "Greater than 12 months";
+  }
+
+  function calcROIBucket(roi){
+    if(roi >= 5 && roi < 6) return "Between 5 to 6 percent";
+    if(roi >= 6 && roi < 7) return "Between 6 to 7 percent";
+    if(roi >= 7 && roi < 8) return "Between 7 to 8 percent";
+    if(roi >= 8 && roi < 9) return "Between 8 to 9 percent";
+    return "Other";
+  }
+
+  function recalcDays(){
+    const sd = parseDateSmart(sdEl.value);
+    const md = parseDateSmart(mdEl.value);
+
+    if(!sd || !md){
+      daysEl.value = "";
+      daysBucketEl.value = "";
+      return;
+    }
+
+    const diff = Math.floor((md - sd) / (1000*60*60*24));
+    if(isNaN(diff) || diff < 0){
+      daysEl.value = "";
+      daysBucketEl.value = "";
+      return;
+    }
+    daysEl.value = diff;
+    daysBucketEl.value = calcDaysBucket(diff);
+  }
+
+  function recalcROI(){
+    const roi = parseFloat(roiEl.value || "");
+    if(isNaN(roi)){
+      roiBucketEl.value = "";
+      return;
+    }
+    roiBucketEl.value = calcROIBucket(roi);
+  }
+
+  function recalcTDS(){
+    const fdAmt = parseMoney(fdAmtEl?.value);
+    const matAmt = parseMoney(maturityAmtEl?.value);
+    const p = parseMoney(tdsPercentEl?.value);
+
+    const interest = Math.max(matAmt - fdAmt, 0);
+    const tds = (interest * p) / 100.0;
+    const exp = matAmt - tds;
+
+    tdsAmtEl.value = formatINR(tds);
+    expectedEl.value = formatINR(exp);
+
+    if(interestDueEl){
+      interestDueEl.value = formatINR(interest);
+    }
+  }
+
+  function recalcInterestDue(){
+    if(!interestDueEl) return;
+
+    const fdAmt = parseMoney(fdAmtEl?.value);
+    const matAmt = parseMoney(maturityAmtEl?.value);
+
+    const diff = matAmt - fdAmt;
+    interestDueEl.value = formatINR(diff);
+  }
+
+  ["input","change"].forEach(evt => {
+    sdEl.addEventListener(evt, recalcDays);
+    mdEl.addEventListener(evt, recalcDays);
+  });
+
+  ["input","change"].forEach(evt => {
+    sdEl.addEventListener(evt, refreshFdAutoCode);
+  });
+
+  roiEl.addEventListener("input", recalcROI);
+
+  maturityAmtEl.addEventListener("input", () => {
+    recalcTDS();
+    recalcInterestDue();
+  });
+
+  fdAmtEl.addEventListener("input", () => {
+    recalcInterestDue();
+    recalcTDS();
+  });
+
+  tdsPercentEl.addEventListener("input", recalcTDS);
+
+  fdAmtEl.addEventListener("blur", () => {
+    fdAmtEl.value = formatINR(parseMoney(fdAmtEl.value));
+    recalcInterestDue();
+  });
+
+  maturityAmtEl.addEventListener("blur", () => {
+    maturityAmtEl.value = formatINR(parseMoney(maturityAmtEl.value));
+    recalcTDS();
+    recalcInterestDue();
+  });
+
+  // On load
+  handleFdType();
+  if(bankSelect.value) loadMappingsForBank(bankSelect.value);
+  recalcDays();
+  recalcROI();
+  recalcTDS();
+  recalcInterestDue();
+  refreshFdAutoCode();
+</script>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const el = document.getElementById("successAlert");
+    if (!el) return;
+
+    setTimeout(() => {
+      el.style.transition = "opacity 0.5s ease";
+      el.style.opacity = "0";
+      setTimeout(() => el.remove(), 600);
+    }, 3000);
+  });
+</script>
+</body>
+</html>
