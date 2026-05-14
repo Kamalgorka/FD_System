@@ -260,8 +260,7 @@ def fd_create(request):
             if maturity_amount == Decimal("0") and (request.POST.get("maturity_amount") or "").strip() == "":
                 missing.append("Maturity Amount")
 
-            if not attachment:
-                missing.append("Attachment")
+
             if missing:
                 raise Exception("Please fill all mandatory fields: " + ", ".join(missing))
 
