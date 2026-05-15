@@ -244,8 +244,8 @@ def fd_create(request):
                     missing.append("Term Loan with")
             if not fd_nature:
                 missing.append("FD Nature")
-            if not fd_number_receipt:
-                missing.append("FD Number (As per receipt)")
+            #if not fd_number_receipt:
+                #missing.append("FD Number (As per receipt)")
             if not start_date:
                 missing.append("Start Date")
             if not maturity_date:
