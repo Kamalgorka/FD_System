@@ -515,7 +515,12 @@ def _get_dashboard_context(as_on: date):
         "wol_pct": Decimal("100.00") if total_wol > 0 else Decimal("0.00"),
         "total_pct": Decimal("100.00") if grand > 0 else Decimal("0.00"),
     }
+    # ✅ Align Liquidity Total FDRs with dashboard summary tables
+    total_fdrs_cr = bank_totals["total_without_lien"]
+    total_fund_available = (total_fdrs_cr + funds_mf_ncd_total).quantize(Decimal("0.01"))
 
+    liquidity["total_fdrs"] = total_fdrs_cr
+    liquidity["total_fund_available"] = total_fund_available
     # ---------- CATEGORY TABLE ----------
     category_data = {}
     for fd in fds:
@@ -1051,7 +1056,9 @@ def dashboard_view(request):
         "total_fd": _to_cr_rupees(total_fd_rs),
         "total_od_pct": _pct(total_od_rs, total_fd_rs),
     }
-
+    # ✅ Align Liquidity Total FDRs with right-side dashboard summary tables
+    total_fdrs_cr = total_wol.quantize(Decimal("0.01"))
+    total_fund_available = (total_fdrs_cr + funds_mf_ncd_total).quantize(Decimal("0.01"))
     liquidity = {
         "total_fund_available": total_fund_available,
         "funds_mf_ncd_total": funds_mf_ncd_total,
